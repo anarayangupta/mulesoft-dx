@@ -19,9 +19,7 @@ metadata:
 
 # Push inventory collector
 
-The customer pastes this file into their coding agent. You do not know their provider or their language until they tell you. Do not assume a cloud vendor, a programming language, or a credential shape from a previous demo.
-
-You write one script for one self-managed scanner configuration. The script is the pull-scanner connection form on their machine, in the language they name. It reads their APIs, builds one payload per asset, uploads each payload, and then commits the scan. The scanner reconciles and publishes. The script does not publish by itself.
+Generate one collector script for one self-managed scanner configuration. Do not assume a cloud vendor, a programming language, or a credential shape until the customer provides them. The script is the pull-scanner connection form on their machine, in the language they name. It reads their APIs, builds one payload per asset, uploads each payload, and then commits the scan. The scanner reconciles and publishes. The script does not publish by itself.
 
 There is no universal provider credential set. There is no schedule on this scanner. Do not add a schedule, a last-run time, or a "run discovery" step.
 
@@ -52,9 +50,17 @@ There is no universal provider credential set. There is no schedule on this scan
 - **`references/provider-auth-resolution.md`** — one question per turn, managed-only auth, new-provider contract. Read it when choosing operations and credential fields.
 
 
-## Words the customer sees
+## Workflow
 
-Use these words in every question, in `--help`, in the FAILED block, and in **Ways to run the script**. Do not hard-code a vendor, a non-production host, or a loopback address into a question or an example host. The example host is `https://anypoint.mulesoft.com`.
+### Rules that always apply
+
+1. **Customer-facing words** — use the table below in every question, in `--help`, in the FAILED block, and in **Ways to run the script**. A wrong verb here is a generation failure.
+2. **One question per response** — never combine asset type, inventory, auth, or language.
+3. **Never ask for a provider name** — infer the provider from a usable spec. On an unreadable or incomplete spec, ask only the missing list, fetch, handshake, export, or auth piece.
+4. **Never reorder** — skip a step only when this chat already answered it with usable data. Ask a step again when the previous answer was unreadable, the wrong kind of file, or missing a required piece.
+5. **Do not create a scanner during generation** — do not log in, do not call Anypoint CLI, do not mint a token to discover an organization. Organization id and configuration id are values copied from the scanner page into the inputs file or the parameters.
+
+Use these words. Do not hard-code a vendor, a non-production host, or a loopback address into a question or an example host. The example host is `https://anypoint.mulesoft.com`.
 
 | Say | Do not say |
 |---|---|
@@ -67,22 +73,11 @@ The upload call is `POST .../push`. The finish call is `POST .../commit`. The qu
 
 Examples of an inventory (OpenAPI, a Postman collection, a redacted request and response) show the shape. They are not a menu and not a default. Language examples are not a fixed list. Do not default to one language.
 
-Ask **one question per response**. Never combine asset type, inventory, auth, or language.
+A script that creates a configuration, calls `anypoint-cli`, or calls `GET /accounts/api/me` in order to invent an organization id is a generation failure. That auto-fill is later work. It is not this script.
 
-## Order
+The only customer questions in this chat are the quoted sentences in Steps 1–5, the missing-piece follow-ups, "Does this look fine?", and the generated script's "Commit this scan? [y/N]". Do not ask which provider.
 
-Skip a step only when this chat already answered it with usable data. Never reorder. Never ask for a provider name; infer the provider from a usable spec. Ask a step again when the previous answer was unreadable, the wrong kind of file, or missing a required list, fetch, handshake, export, or auth piece.
-
-1. Asset type.
-2. API inventory for that type only.
-3. Authentication request and response for that inventory. No secret values.
-4. Script language. Any language they name. Project conventions are optional.
-5. Show the mapping and ask exactly: "Does this look fine?"
-6. After yes, write two files, then show **Ways to run the script**. Do not ask "Does this look fine?" after writing.
-
-Do not ask whether to create a scanner configuration. Do not log in. Do not call Anypoint CLI. Do not mint a token in order to discover an organization. A script that creates a configuration, calls `anypoint-cli`, or calls `GET /accounts/api/me` in order to invent an organization id is a generation failure. Organization id and configuration id are values they copy from the scanner page into the inputs file or the parameters. That auto-fill is later work. It is not this script.
-
-## Questions
+### Step 1: Ask asset type
 
 When the asset type is not already explicit, the whole message is:
 
@@ -92,13 +87,15 @@ agent is one agent card. mcp is one MCP server card. rest-api is one API descrip
 
 Then stop.
 
-Explicit means they wrote `agent`, `mcp`, or `rest-api`, or a harmless alias (`agents` → `agent`, `api` / `REST APIs` / `APIs` → `rest-api`, `MCP` / `MCP servers` → `mcp`). A provider name, a file name, or an operation name is not an asset type. Do not infer the asset type from a single-type contract. Inferring the type so you can jump ahead is a generation failure.
+Explicit means they wrote `agent`, `mcp`, or `rest-api`, or a harmless alias (`agents` → `agent`, `api` / `REST APIs` / `APIs` → `rest-api`, `MCP` / `MCP servers` → `mcp`). A provider name, a file name, or an operation name is not an asset type. Do not infer the asset type from a single-type contract. Inferring the type so generation can jump ahead is a generation failure.
+
+### Step 2: Collect inventory
 
 Once the type is known, the whole next message is:
 
 "Please provide the API specification or documentation for the provider APIs that list and fetch these assets. OpenAPI or Swagger, a Postman or Insomnia collection, RAML, an API Blueprint, a GraphQL schema, an SDK reference, or a redacted request and response are examples, not required formats."
 
-Then stop. Do not ask which provider. Infer the provider from a usable spec. Do not invent calls. Do not fetch a spec they did not give you. The catalog later in this file is a shape reminder for a matching paste, not a substitute.
+Then stop. Do not ask which provider. Infer the provider from a usable spec. Do not invent calls. Do not fetch a spec they did not provide. The catalog later in this file is a shape reminder for a matching paste, not a substitute.
 
 Read what they attached. Then stop if it is not yet usable. Ask only the missing piece. One question per response.
 
@@ -110,6 +107,8 @@ Read what they attached. Then stop if it is not yet usable. Ask only the missing
 
 A usable inventory has the list call plus the fetch, card, handshake, or export that type needs. Only then ask authentication. Vertex MCP, Gemini MCP, Gemini agents, Azure AI Foundry MCP, and Microsoft 365 Copilot with no customer list docs are enum-only: ask for a customer list call, or stop. If they ask which file to use, they only have this skill and the files they attach; do not name a path from this package.
 
+### Step 3: Collect authentication
+
 Once the inventory is usable, the whole next message is:
 
 "Please provide the authentication documentation needed to call those APIs. Include the token or signing request, the response, which field is a secret, and how a call is proven to be the right account. Do not paste secret values."
@@ -120,26 +119,28 @@ If that document is missing a piece, ask only that piece. Whole message, fill on
 
 Use the authentication document they pasted. Do not open a catalog file from this skill. When they describe Salesforce connected-org (C2C) login or a MuleSoft-managed authorization-code flow, that is not customer-executable: ask for a request and response they can run from their machine. Until they provide one, do not write files. A pasted SigV4 access-key flow still uses the request and response they pasted. Do not copy pull-scanner-only fields such as Hub Role ARN, Spoke Role Name, External ID, Account IDs, or Target Regions into the script.
 
+### Step 4: Ask script language
+
 Once auth is known, the whole next message is:
 
 "Which script language should I use? Project conventions are optional. Any language you can run is acceptable. Named languages are examples, not a fixed list."
 
 Then stop. Do not default to a language. Writing a file before they answer is a failure. If they name a language and omit conventions, write a plain script in that language.
 
-The only customer questions in this chat are the quoted sentences above, the missing-piece follow-ups, "Does this look fine?", and the generated script's "Commit this scan? [y/N]". Do not ask which provider.
-
 Default script stderr the customer sees: the numbered step banner only when that step runs; after a successful list `listed N, matching M, skipped K`; then one line per **matching** asset (`type`, external id, display name); `No matching {ASSET_TYPE} assets found.` when M is 0; FAILED for real failures. Do not print skip ids, `skipping MCP`, or `not MCP` unless `--verbose`.
 
-## Mapping
+### Step 5: Show the mapping
+
+**[GATE] WAIT for an explicit yes to "Does this look fine?" before writing files.**
 
 When type, inventory, auth, and language are known, do not write files in that turn. Show the mapping in this order, then stop. Do not treat dumping the script as having shown the mapping.
 
-1. What you collected, in plain English: the list and detail calls, the auth field names (not values), the language, and the one asset type.
+1. What was collected, in plain English: the list and detail calls, the auth field names (not values), the language, and the one asset type.
 2. One row per inventory call. Columns: Call, Request, Response field, Zip path.
-3. One row per field the zip will contain. Columns: Source, Sent as, Required. Source is the operation and response path, or `constant`. If you cannot point at a source, leave the row blank and ask only for that API or field. Do not guess. If any required Source is blank, stop here. Do not show items 4–8 and do not ask "Does this look fine?" until every required Source is filled.
-4. One Representative generated JSON object for a single asset, using values from their inventory when they gave an example, otherwise empty strings. For `agent`, every required A2A v0.3 field has a row (`name`, `description`, `protocolVersion`, `url`, `version`, `capabilities`, `defaultInputModes`, `defaultOutputModes`, `skills`). A v1 card uses `supportedInterfaces` or `supported_interfaces` and has no top-level `url`. The artifact is `a2a-card.json` or `a2a-v1-card.json`. For `mcp`, `specification/mcp-metadata.json` with `transport` required; if you include `capabilities`, include all four booleans `tools`, `resources`, `prompts`, and `logging`; do not add `serverInfo`. For `rest-api`, `specification/oas.json` with `info` and `paths`; `externalId` is the provider id, and one stage is one asset.
+3. One row per field the zip will contain. Columns: Source, Sent as, Required. Source is the operation and response path, or `constant`. If a required Source cannot be pointed at, leave the row blank and ask only for that API or field. Do not guess. If any required Source is blank, stop here. Do not show items 4–8 and do not ask "Does this look fine?" until every required Source is filled.
+4. One Representative generated JSON object for a single asset, using values from their inventory when they gave an example, otherwise empty strings. For `agent`, every required A2A v0.3 field has a row (`name`, `description`, `protocolVersion`, `url`, `version`, `capabilities`, `defaultInputModes`, `defaultOutputModes`, `skills`). A v1 card uses `supportedInterfaces` or `supported_interfaces` and has no top-level `url`. The artifact is `a2a-card.json` or `a2a-v1-card.json`. For `mcp`, `specification/mcp-metadata.json` with `transport` required; if capabilities are included, include all four booleans `tools`, `resources`, `prompts`, and `logging`; do not add `serverInfo`. For `rest-api`, `specification/oas.json` with `info` and `paths`; `externalId` is the provider id, and one stage is one asset.
 5. How the zip is uploaded after they run the script: `POST {ANYPOINT_BASE}/agent-scanner/api/v1/organizations/{org}/scanner-configurations/{config}/push` is the zip as multipart part `file`, filename `{externalId}.zip`. Not JSON. Finish is a separate `POST .../commit`. The customer question is "Commit this scan? [y/N]". Do not name `/push-assets`, `/complete`, or `/seal`.
-6. Script architecture: the function names you will write (provider login, list, shape zip, token, upload, optional commit, print status) and the numbered stderr steps below.
+6. Script architecture: the function names to write (provider login, list, shape zip, token, upload, optional commit, print status) and the numbered stderr steps below.
 7. Flags, environment variables, prompts, and which of those are secret. Same names as **The script**. `--help` three columns: Prompt label, Parameter flag, Input file key.
 8. Ask exactly: "Does this look fine?"
 
@@ -153,7 +154,7 @@ Classify with the check described in their inventory. Do not classify by display
 
 AgentCore MCP handshake URL is not the Exchange card field `transport.path` (`/mcp`). The invoke URL is `https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{urlencoded agentRuntimeArn}/invocations?qualifier={endpointName}`. `agentRuntimeArn` comes from `get-agent-runtime` / the list item. Encode it with `urllib.parse.quote(arn, safe="")` (every `:`, `/`, and extra character). `endpointName` is `list-agent-runtime-endpoints` `runtimeEndpoints[0].name`, usually `DEFAULT`. No endpoint name means skip that runtime. `Accept` is `application/json, text/event-stream`. Parse JSON or SSE `data:` lines. `initialize` params are `protocolVersion` `2025-03-26`, `capabilities` `{}`, `clientInfo`. HTTP 401/403 on initialize is FAILED. HTTP 400/404/405/415/422 or a missing `result` object is skip. A generated script that POSTs `/runtimes/{agentRuntimeId}/invocations/mcp`, uses the unencoded runtime id in the path, or omits `?qualifier=` is a generation failure. A default run that prints `skipped {id}` for every non-matching runtime is a generation failure.
 
-## What you write
+### Step 6: Write the two files
 
 Two files, in the language they named. No markdown guide. The chat already showed the mapping. Prerequisites and Ways to run come after these files exist.
 
@@ -182,6 +183,14 @@ PUSH_COMMIT=
 Append one line per provider credential the script will actually ask for, with `(required)` or `(optional)`. Do not copy a credential set from a different provider. A session token, a private key, or any other long secret is `(required)` only when their auth document says the call fails without it.
 
 When that document offers more than one credential source, ask which one before the mapping. The script uses only that source. It does not fall back to another. An attached role or a named profile is allowed when they select it. Do not demand an access key for that choice. An unattended run names the source in the inputs file. It does not guess from leftover environment variables. For AWS that line is `AWS_AUTH_MODE` with one of `profile`, `default-chain`, or `access-keys`.
+
+The rest of this file is the script contract. Read **The script**, **One input mode**, **ZIP and push**, and `references/scanner-contract.md` before writing. Read `references/generated-script-standard.md` for stderr, JSON stdout, and the mapping fingerprint. Read `references/provider-auth-resolution.md` for managed-only auth.
+
+### Step 7: Verify generation and show how to run
+
+After the two files exist, show Prerequisites, then **Ways to run the script** in this order: interactive, parameters, input file, and the full `inputs.env` as a fenced block named `inputs.env` so they can download it. Do not ask "Does this look fine?" after writing.
+
+Run the language checker in **Same job, any language** on the generated file. Search for forbidden patterns (`json=` or `"Content-Type": "application/json"` on `/push`, `POST .../seal`, `POST .../complete`, `--client-secret`, `args.[a-z]+-`). If the checker cannot run here, search the file for those patterns. Do not declare completion until the file parses in the named language and those searches are clean.
 
 ## Connected App
 
@@ -453,7 +462,7 @@ Zipping `harness_model_Bedrock` as `type: mcp`, or zipping `agent_scanner_mcp_fi
 
 Whatever they named (Python, Bash, Node, Java, Go, PowerShell, or another runtime) the generated file must parse in that language and do the same job: pull-form provider login, list one zip type, MuleSoft token, `POST .../push`, optional commit, FAILED block, JSON stdout. Do not emit Python because Bash is hard.
 
-Run these on the file you just wrote before you claim it works. If you cannot run the checker here, search the file for the forbidden patterns.
+Run these on the generated file before claiming it works. If the checker cannot run here, search the file for the forbidden patterns.
 
 | They asked | Must pass |
 |---|---|
@@ -504,7 +513,7 @@ Already logged in on this machine, or access keys. Service `bedrock-agentcore-co
 
 ### Azure API Management REST
 
-`az` already logged in. List APIs with the API Management resource in the subscription, resource group, and service name they give you. Export each API as OpenAPI. Caps: 1000 instances, 10000 APIs.
+`az` already logged in. List APIs with the API Management resource in the subscription, resource group, and service name they provide. Export each API as OpenAPI. Caps: 1000 instances, 10000 APIs.
 
 ### Azure API Management MCP
 
@@ -604,7 +613,7 @@ A2A v0.3 (`a2a-card.json`) required keys: `name`, `description`, `protocolVersio
 
 A2A v1 (`a2a-v1-card.json`): `supportedInterfaces` or `supported_interfaces` with a callable `url`; never a top-level `url`.
 
-MCP (`mcp-metadata.json`): `transport` required; if you emit `capabilities`, emit all four booleans `tools`, `resources`, `prompts`, `logging`; omit `serverInfo`.
+MCP (`mcp-metadata.json`): `transport` required; if emitting `capabilities`, emit all four booleans `tools`, `resources`, `prompts`, `logging`; omit `serverInfo`.
 
 REST artifact is the exported OpenAPI document. It must contain `openapi` or `swagger`.
 
@@ -645,13 +654,22 @@ HTTP 202 body has `workspaceRunId`. Read it. A generated script that calls `POST
 
 The zip **must** contain `{externalId}/specification/config.json` and `{externalId}/specification/<artifact>`. `{externalId}/config.json` at the top of the zip is invalid.
 
+## Best Practices
+
+- **One question per turn.** ✅ the quoted sentences in **Workflow**. ❌ combining asset type, inventory, auth, or language in one reply.
+- **Infer the provider; never ask its name.** ✅ read the attached spec. ❌ "which provider?". On an invalid spec, ask for the missing list, fetch, handshake, export, or auth piece.
+- **Mapping gate.** ✅ show the mapping, then wait for "Does this look fine?". ❌ writing files in the mapping turn. ❌ treating a script dump as the mapping.
+- **Quiet skips.** ✅ `listed N, matching M, skipped K` plus matching asset lines. ❌ skip ids, `skipping MCP`, or `not MCP` unless `--verbose`.
+- **Omission is not deletion.** ✅ `DELETE .../push/{externalId}` only when they ask to unstage. ❌ DELETE because a second run's list is shorter.
+- **Baked asset type.** ✅ `ASSET_TYPE` constant. ❌ `--asset-type` or an environment variable that switches type.
+
 ## Troubleshooting
 
 **HTTP 415 on POST /push:** the body was not a ZIP as multipart part `file`. JSON, `json=`, `Content-Type: application/json`, a missing boundary, or a boundary that starts with `=` all produce 415. Use the `_multipart_zip` helper (or `files={"file": (...)}` without setting Content-Type).
 
 **No inventory file in this skill:** this package does not ship provider OpenAPI files. If they ask which file to open, ask them to paste or attach their own specification.
 
-**Invalid or incomplete spec:** do not invent calls and do not ask which provider. Ask for the missing list, fetch, handshake, export, or auth piece using the questions in **Questions**.
+**Invalid or incomplete spec:** do not invent calls and do not ask which provider. Ask for the missing list, fetch, handshake, export, or auth piece using the questions in **Workflow**.
 
 **Salesforce C2C or managed authorization-code login:** that pull form is not customer-executable. Ask for a request and response they can run from their machine before writing files.
 
