@@ -8,19 +8,22 @@ inputs for a generated script.
 1. Resolve exactly one scanner asset type first: `agent`, `mcp`, or
    `rest-api`. If it is missing, ask only that question and stop.
 2. Ask for that type's API inventory next. The inventory is the specification
-   they paste or attach. Do not ask for authentication in the same turn.
-3. After they confirm that inventory, ask for authentication. Use the request
-   and response they paste. If a pull-scanner connection form exists for that
-   provider, match its field labels for the fields the script actually asks.
-4. A named provider is not permission to generate. Do not combine the inventory
-   paste and the auth paste into one question. Do not skip either because the
-   customer named the provider or answered a language. Language comes after
-   auth. Mapping confirmation comes after language. Files come after yes.
-5. A provider name is not a contract. AWS `agent` can mean Bedrock agents or
-   AgentCore runtimes; list both and stop.
-6. When they have not confirmed the inventory and auth format, or they identify
-   a material difference, request the selected asset type's callable API and
-   executable authentication contract. Do not route by a similar provider name.
+   they paste or attach. Do not ask which provider. Infer the provider from a
+   usable spec. Do not ask for authentication in the same turn.
+3. If the attachment is unreadable, the wrong kind of file, or missing the
+   list, fetch, handshake, or export that type needs, ask only for that missing
+   piece. Do not invent calls. Do not treat the first attach as final.
+4. After the inventory is usable, ask for authentication. Use the request and
+   response they paste. If a piece is missing (token or signing request,
+   response, which field is a secret, how the account is proven), ask only that
+   piece. If a pull-scanner connection form exists for the inferred provider,
+   match its field labels for the fields the script actually asks.
+5. Do not combine inventory and auth into one question. Do not skip either
+   because they named a vendor or a language. Language comes after auth.
+   Mapping confirmation comes after language. Files come after yes.
+6. When they have not given a usable inventory and auth contract, keep asking
+   for the missing callable API or executable authentication piece. Do not
+   route by a similar vendor name.
 
 The bundle is an evidence index, not a generic provider implementation. AWS
 Bedrock agents, AWS AgentCore agents, AWS AgentCore MCP, and AWS API Gateway

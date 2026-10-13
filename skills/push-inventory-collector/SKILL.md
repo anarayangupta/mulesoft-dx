@@ -69,7 +69,7 @@ Ask **one question per response**. Never combine asset type, inventory, auth, or
 
 ## Order
 
-Skip a step only when this chat already answered it. Never reorder. Never ask that step again.
+Skip a step only when this chat already answered it with usable data. Never reorder. Never ask for a provider name; infer the provider from a usable spec. Ask a step again when the previous answer was unreadable, the wrong kind of file, or missing a required list, fetch, handshake, export, or auth piece.
 
 1. Asset type.
 2. API inventory for that type only.
@@ -96,15 +96,25 @@ Once the type is known, the whole next message is:
 
 "Please provide the API specification or documentation for the provider APIs that list and fetch these assets. OpenAPI or Swagger, a Postman or Insomnia collection, RAML, an API Blueprint, a GraphQL schema, an SDK reference, or a redacted request and response are examples, not required formats."
 
-Then stop. A file they attach, or a document they paste, is the inventory. Read it and ask the authentication question next. Do not ask for the inventory again. A provider name with no document is not a contract: ask this sentence again. Do not invent calls, and do not fetch an inventory they did not give you. The catalog later in this file is a shape reminder, not a substitute.
+Then stop. Do not ask which provider. Infer the provider from a usable spec. Do not invent calls. Do not fetch a spec they did not give you. The catalog later in this file is a shape reminder for a matching paste, not a substitute.
 
-If they already gave that type and they ask which file to use, do not name a path from this skill package. They only have this skill and the files they attach. Ask them to paste or attach their own OpenAPI, Postman collection, or redacted request and response. Vertex MCP, Gemini MCP, or Gemini agents with no customer list docs are enum-only: ask for a customer list call, or stop.
+Read what they attached. Then stop if it is not yet usable. Ask only the missing piece. One question per response.
 
-Once the inventory is known, the whole next message is:
+- Unreadable, empty, unrelated, or not a spec or redacted request and response. Whole message: "This attachment is not a usable specification for listing and fetching these assets. Please attach or paste a valid API spec or a redacted request and response that includes those APIs."
+- No list API for the type they named. Whole message: "This specification does not include an API that lists {agent|mcp|rest-api} assets. Please attach or paste that list API."
+- Agent list with no fetch or card API. Whole message: "This specification lists assets but does not include the fetch or card API needed to build the agent zip. Please attach or paste that call."
+- MCP list with no `initialize` / `tools/list` (or the equivalent handshake). Whole message: "This specification does not include initialize and tools/list (or the equivalent handshake) needed to build an MCP card. Please attach or paste those calls."
+- REST list with no export or OpenAPI download. Whole message: "This specification does not include the export or OpenAPI download needed to build a REST zip. Please attach or paste that call."
+
+A usable inventory has the list call plus the fetch, card, handshake, or export that type needs. Only then ask authentication. Vertex MCP, Gemini MCP, Gemini agents, Azure AI Foundry MCP, and Microsoft 365 Copilot with no customer list docs are enum-only: ask for a customer list call, or stop. If they ask which file to use, they only have this skill and the files they attach; do not name a path from this package.
+
+Once the inventory is usable, the whole next message is:
 
 "Please provide the authentication documentation needed to call those APIs. Include the token or signing request, the response, which field is a secret, and how a call is proven to be the right account. Do not paste secret values."
 
 Then stop. A long-lived secret, a session token, and a private key are never typed into this chat. They belong in the inputs file or in the environment when the script runs.
+
+If that document is missing a piece, ask only that piece. Whole message, fill one gap: "The authentication documentation is missing {the token or signing request|the response|which field is a secret|how a call is proven to be the right account}. Please add that piece. Do not paste secret values." Do not proceed to language until those four are present.
 
 Use the authentication document they pasted. Do not open a catalog file from this skill. When they describe Salesforce connected-org (C2C) login or a MuleSoft-managed authorization-code flow, that is not customer-executable: ask for a request and response they can run from their machine. Until they provide one, do not write files. A pasted SigV4 access-key flow still uses the request and response they pasted. Do not copy pull-scanner-only fields such as Hub Role ARN, Spoke Role Name, External ID, Account IDs, or Target Regions into the script.
 
@@ -114,13 +124,17 @@ Once auth is known, the whole next message is:
 
 Then stop. Do not default to a language. Writing a file before they answer is a failure. If they name a language and omit conventions, write a plain script in that language.
 
+The only customer questions in this chat are the quoted sentences above, the missing-piece follow-ups, "Does this look fine?", and the generated script's "Commit this scan? [y/N]". Do not ask which provider.
+
+Default script stderr the customer sees: the numbered step banner only when that step runs; after a successful list `listed N, matching M, skipped K`; then one line per **matching** asset (`type`, external id, display name); `No matching {ASSET_TYPE} assets found.` when M is 0; FAILED for real failures. Do not print skip ids, `skipping MCP`, or `not MCP` unless `--verbose`.
+
 ## Mapping
 
 When type, inventory, auth, and language are known, do not write files in that turn. Show the mapping in this order, then stop. Do not treat dumping the script as having shown the mapping.
 
 1. What you collected, in plain English: the list and detail calls, the auth field names (not values), the language, and the one asset type.
 2. One row per inventory call. Columns: Call, Request, Response field, Zip path.
-3. One row per field the zip will contain. Columns: Source, Sent as, Required. Source is the operation and response path, or `constant`. If you cannot point at a source, leave the row blank and ask. Do not guess.
+3. One row per field the zip will contain. Columns: Source, Sent as, Required. Source is the operation and response path, or `constant`. If you cannot point at a source, leave the row blank and ask only for that API or field. Do not guess. If any required Source is blank, stop here. Do not show items 4–8 and do not ask "Does this look fine?" until every required Source is filled.
 4. One Representative generated JSON object for a single asset, using values from their inventory when they gave an example, otherwise empty strings. For `agent`, every required A2A v0.3 field has a row (`name`, `description`, `protocolVersion`, `url`, `version`, `capabilities`, `defaultInputModes`, `defaultOutputModes`, `skills`). A v1 card uses `supportedInterfaces` or `supported_interfaces` and has no top-level `url`. The artifact is `a2a-card.json` or `a2a-v1-card.json`. For `mcp`, `specification/mcp-metadata.json` with `transport` required; if you include `capabilities`, include all four booleans `tools`, `resources`, `prompts`, and `logging`; do not add `serverInfo`. For `rest-api`, `specification/oas.json` with `info` and `paths`; `externalId` is the provider id, and one stage is one asset.
 5. How the zip is uploaded after they run the script: `POST {ANYPOINT_BASE}/agent-scanner/api/v1/organizations/{org}/scanner-configurations/{config}/push` is the zip as multipart part `file`, filename `{externalId}.zip`. Not JSON. Finish is a separate `POST .../commit`. The customer question is "Commit this scan? [y/N]". Do not name `/push-assets`, `/complete`, or `/seal`.
 6. Script architecture: the function names you will write (provider login, list, shape zip, token, upload, optional commit, print status) and the numbered stderr steps below.
@@ -514,7 +528,7 @@ Card: look at `spec.classMethods` for `name` `on_message_send` and `a2a_agent_ca
 
 Not `VERTEX_MCP`. That enum has no pull class. Do not list reasoning engines.
 
-`gcloud` ADC. Prompt **GCP Project ID** and **Location**. List `GET https://run.googleapis.com/v2/projects/{project}/locations/{location}/services` with an **access** token. For each service `uri`, JSON-RPC `initialize` (`protocolVersion` `2025-03-26`) then `tools/list` to `POST {uri}/` with an **identity** token (`gcloud auth print-identity-token --audiences={uri}`). Null `initialize` result = skip, print the service id. HTTP 401/403 on initialize is FAILED. Do not POST `https://run.googleapis.com/mcp-handshake`.
+`gcloud` ADC. Prompt **GCP Project ID** and **Location**. List `GET https://run.googleapis.com/v2/projects/{project}/locations/{location}/services` with an **access** token. For each service `uri`, JSON-RPC `initialize` (`protocolVersion` `2025-03-26`) then `tools/list` to `POST {uri}/` with an **identity** token (`gcloud auth print-identity-token --audiences={uri}`). Null `initialize` result = skip (count only unless `--verbose`). HTTP 401/403 on initialize is FAILED. Do not POST `https://run.googleapis.com/mcp-handshake`.
 
 Zip `mcp-metadata.json`: `transport.kind` `streamableHttp`, `transport.path` `/`. If `capabilities` is present, four booleans `tools`, `resources`, `prompts`, `logging`. Omit `serverInfo`. External id is the service id (last segment of `name`).
 
@@ -532,7 +546,7 @@ They give an account URL. Header `Authorization: Bearer` and `X-Snowflake-Author
 
 ### Snowflake MCP
 
-`POST {account}/api/v2/statements` with SQL `SHOW MCP SERVERS`. Then JSON-RPC `initialize`, then `tools/list`. A failed handshake is a skip.
+`POST {account}/api/v2/statements` with SQL `SHOW MCP SERVERS`. Then JSON-RPC `initialize`, then `tools/list`. A failed handshake is a skip (count only unless `--verbose`).
 
 ### Microsoft Copilot Studio agents
 
@@ -634,6 +648,8 @@ The zip **must** contain `{externalId}/specification/config.json` and `{external
 **HTTP 415 on POST /push:** the body was not a ZIP as multipart part `file`. JSON, `json=`, `Content-Type: application/json`, a missing boundary, or a boundary that starts with `=` all produce 415. Use the `_multipart_zip` helper (or `files={"file": (...)}` without setting Content-Type).
 
 **No inventory file in this skill:** this package does not ship provider OpenAPI files. If they ask which file to open, ask them to paste or attach their own specification.
+
+**Invalid or incomplete spec:** do not invent calls and do not ask which provider. Ask for the missing list, fetch, handshake, export, or auth piece using the questions in **Questions**.
 
 **Salesforce C2C or managed authorization-code login:** that pull form is not customer-executable. Ask for a request and response they can run from their machine before writing files.
 
