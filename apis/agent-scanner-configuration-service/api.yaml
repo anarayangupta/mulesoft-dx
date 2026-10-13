@@ -726,6 +726,12 @@ components:
       schema:
         type: string
         maxLength: 255
+      x-origin:
+      - api: urn:api:agent-scanner-configuration-service
+        operation: pushWorkspaceAsset
+        values: $.assetId
+        labels: $.assetId
+        description: "POST /push; use assetId as the externalId (ZIP filename without .zip)."
     XOrigin_scanRunId_Path:
       name: scanRunId
       description: The scan run identifier.

@@ -3,10 +3,12 @@ name: push-inventory-collector
 description: >-
   Generate one customer-hosted collector script that lists agents, MCP servers,
   or REST APIs, uploads each asset ZIP with POST /push, then finishes with POST
-  /commit. Use when the user asks to push inventory, generate a push script,
-  How to Push, self-managed scanner, or download the collector skill. DO NOT
-  TRIGGER when creating a pull scanner (skill setup-service-scanner) or running
-  a hosted scan (skill run-service-scan-and-view-results).
+  /commit. TRIGGER when: the user asks to push inventory, generate a push
+  script, How to Push, self-managed scanner, or download the collector skill.
+  Trigger phrases include "push inventory", "generate a push script", "How to
+  Push", "self-managed scanner", "collector skill", "POST /push", "POST /commit".
+  DO NOT TRIGGER when: creating a pull scanner (skill setup-service-scanner) or
+  running a hosted scan (skill run-service-scan-and-view-results).
 license: Apache-2.0
 compatibility: Requires a coding agent that can write files, plus the language the customer names at runtime.
 allowed-tools: Bash Read Write Edit AskUserQuestion
